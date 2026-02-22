@@ -20,16 +20,17 @@ let score = 0;
 let animationId;
 let debrisArray = [];
 let lastDebrisTime = 0;
-let debrisSpawnRate = 1000; // ms
+let debrisSpawnRate = 600; // ms (Faster spawn)
 
 const ship = {
     x: 0,
     y: 0,
     width: 50,
     height: 50,
-    speed: 7,
+    speed: 8, // Slightly faster ship to compensate
     movingLeft: false,
-    movingRight: false
+    movingRight: false,
+    visible: true
 };
 
 function resizeCanvas() {
@@ -78,7 +79,8 @@ class Debris {
         this.height = this.width;
         this.x = Math.random() * (canvas.width - this.width);
         this.y = -this.height;
-        this.speed = 3 + Math.random() * 4 + (score / 10);
+        // Faster base speed and faster scaling
+        this.speed = 5 + Math.random() * 5 + (score / 5);
     }
 
     update() {
@@ -96,6 +98,8 @@ function startGame() {
     score = 0;
     debrisArray = [];
     ship.x = canvas.width / 2 - ship.width / 2;
+    ship.visible = true;
+    debrisSpawnRate = 600;
     updateScore();
 
     // 3 Second Countdown
@@ -146,14 +150,16 @@ function animate(time) {
     if (ship.movingRight && ship.x < canvas.width - ship.width) ship.x += ship.speed;
 
     // Draw ship
-    ctx.drawImage(shipImg, ship.x, ship.y, ship.width, ship.height);
+    if (ship.visible) {
+        ctx.drawImage(shipImg, ship.x, ship.y, ship.width, ship.height);
+    }
 
     // Spawn debris
     if (time - lastDebrisTime > debrisSpawnRate) {
         debrisArray.push(new Debris());
         lastDebrisTime = time;
-        // Increase difficulty
-        debrisSpawnRate = Math.max(300, 1000 - (score * 10));
+        // Increase difficulty faster
+        debrisSpawnRate = Math.max(150, 600 - (score * 15));
     }
 
     // Update and draw debris
@@ -163,8 +169,15 @@ function animate(time) {
         d.draw();
 
         // Check collision
-        if (checkCollision(ship, d)) {
+        if (ship.visible && checkCollision(ship, d)) {
+            ship.visible = false;
+            debrisArray.splice(i, 1); // Debris disappears
+            // Redraw frame without ship and colliding debris
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            debrisArray.forEach(item => item.draw());
+
             endGame();
+            return;
         }
 
         // Remove off-screen debris and increase score
